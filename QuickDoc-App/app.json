@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "QuickDoc-App",
-    "slug": "QuickDoc-App",
+    "slug": "quickdoc",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,6 +25,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "60e8b997-22b4-45de-9053-f4812e30bf1e"
+      }
+    },
+    "owner": "ajaykumar0210"
   }
 }
