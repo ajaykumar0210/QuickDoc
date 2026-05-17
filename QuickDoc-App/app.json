@@ -31,6 +31,10 @@
         "projectId": "60e8b997-22b4-45de-9053-f4812e30bf1e"
       }
     },
-    "owner": "ajaykumar0210"
+    "owner": "ajaykumar0210",
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
+    ]
   }
 }
