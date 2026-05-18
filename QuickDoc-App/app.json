@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "QuickDoc-App",
+    "name": "QuickDoc",
     "slug": "quickdoc",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,14 +9,17 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0EA5E9"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ajaykumar0210.quickdoc"
     },
     "android": {
+      "package": "com.ajaykumar0210.quickdoc",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0EA5E9",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -34,7 +37,8 @@
     "owner": "ajaykumar0210",
     "plugins": [
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "expo-font"
     ]
   }
 }
