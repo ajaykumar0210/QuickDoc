@@ -1,8 +1,20 @@
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
+// Module-level storage — avoids JSON.stringify losing methods when passing via route params
+let _pendingConfirmation: FirebaseAuthTypes.ConfirmationResult | null = null;
+
+export function getPendingConfirmation(): FirebaseAuthTypes.ConfirmationResult | null {
+  return _pendingConfirmation;
+}
+
+export function clearPendingConfirmation(): void {
+  _pendingConfirmation = null;
+}
+
 // Send OTP to phone number (India: +91XXXXXXXXXX)
 export async function sendOTP(phoneNumber: string): Promise<FirebaseAuthTypes.ConfirmationResult> {
   const confirmation = await auth().signInWithPhoneNumber(phoneNumber);
+  _pendingConfirmation = confirmation;
   return confirmation;
 }
 

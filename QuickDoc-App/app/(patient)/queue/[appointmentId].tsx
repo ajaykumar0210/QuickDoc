@@ -1,23 +1,43 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../../constants/colors';
-
-const QUEUE_STAGES = [
-  { id: 1, label: 'Booking Confirmed', done: true, icon: '✅' },
-  { id: 2, label: 'Payment Received', done: true, icon: '💳' },
-  { id: 3, label: 'You\'re in Queue', done: true, icon: '⏳' },
-  { id: 4, label: 'Your Turn', done: false, icon: '🔔' },
-  { id: 5, label: 'Consultation Done', done: false, icon: '🩺' },
-];
+import { getBooking, Booking } from '../../../firebase/firestore';
+import { useQueueStatus, useAppointmentPosition } from '../../../hooks/useQueue';
 
 export default function QueueScreen() {
   const router = useRouter();
   const { appointmentId } = useLocalSearchParams<{ appointmentId: string }>();
-  const [queuePosition, setQueuePosition] = useState(3);
-  const [estWait, setEstWait] = useState(30);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [loadingBooking, setLoadingBooking] = useState(true);
   const [pulseAnim] = useState(new Animated.Value(1));
+
+  // Load booking from Firestore
+  useEffect(() => {
+    if (!appointmentId) return;
+    getBooking(appointmentId).then((b) => {
+      setBooking(b);
+      setLoadingBooking(false);
+    });
+  }, [appointmentId]);
+
+  // Real-time queue from Realtime DB
+  const queueStatus = useQueueStatus(
+    booking?.doctorId ?? '',
+    booking?.date ?? ''
+  );
+  const myPosition = useAppointmentPosition(
+    booking?.doctorId ?? '',
+    booking?.date ?? '',
+    appointmentId ?? ''
+  );
+
+  const queuePosition = myPosition > 0 && queueStatus
+    ? Math.max(0, myPosition - (queueStatus.currentServing ?? 0))
+    : myPosition;
+  const estWait = queuePosition * (queueStatus?.estimatedWaitPerPatient ?? 10);
+  const isYourTurn = queuePosition === 0 && myPosition > 0;
 
   // Pulse animation for "live" indicator
   useEffect(() => {
@@ -31,17 +51,13 @@ export default function QueueScreen() {
     return () => pulse.stop();
   }, []);
 
-  // Simulate queue moving (demo only)
-  useEffect(() => {
-    if (queuePosition <= 0) return;
-    const timer = setTimeout(() => {
-      setQueuePosition((q) => Math.max(0, q - 1));
-      setEstWait((w) => Math.max(0, w - 10));
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, [queuePosition]);
-
-  const isYourTurn = queuePosition === 0;
+  const QUEUE_STAGES = [
+    { id: 1, label: 'Booking Confirmed', done: true, icon: '✅' },
+    { id: 2, label: 'Payment Received', done: true, icon: '💳' },
+    { id: 3, label: "You're in Queue", done: myPosition > 0, icon: '⏳' },
+    { id: 4, label: 'Your Turn', done: isYourTurn, icon: '🔔' },
+    { id: 5, label: 'Consultation Done', done: booking?.status === 'completed', icon: '🩺' },
+  ];
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>

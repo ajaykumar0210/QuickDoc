@@ -5,25 +5,23 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
-  TextInput,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
-
-// ─── Data ────────────────────────────────────────────────────────────────────
+import { useDoctorsRealtime } from '../../hooks/useSearch';
 
 const SPECIALTIES = [
-  { id: '1', label: 'General', icon: '🩺' },
-  { id: '2', label: 'Dentist', icon: '🦷' },
-  { id: '3', label: 'Cardiologist', icon: '❤️' },
-  { id: '4', label: 'Orthopedic', icon: '🦴' },
-  { id: '5', label: 'Dermatologist', icon: '🧴' },
-  { id: '6', label: 'ENT', icon: '👂' },
-  { id: '7', label: 'Pediatrics', icon: '👶' },
-  { id: '8', label: 'Gynecology', icon: '🌸' },
+  { id: 'general', label: 'General', icon: '🩺' },
+  { id: 'dentist', label: 'Dentist', icon: '🦷' },
+  { id: 'cardiologist', label: 'Heart', icon: '❤️' },
+  { id: 'orthopedic', label: 'Bones', icon: '🦴' },
+  { id: 'dermatologist', label: 'Skin', icon: '🧴' },
+  { id: 'ent', label: 'ENT', icon: '👂' },
+  { id: 'pediatrics', label: 'Child', icon: '👶' },
+  { id: 'gynecologist', label: 'Women', icon: '🌸' },
 ];
 
 const QUICK_ACTIONS = [
@@ -33,44 +31,7 @@ const QUICK_ACTIONS = [
   { id: '4', label: 'My Queue', icon: '⏱️', color: '#FFFBEB', route: '/(patient)/appointments' },
 ];
 
-const MOCK_DOCTORS = [
-  {
-    id: '1',
-    name: 'Dr. Priya Sharma',
-    specialty: 'Cardiologist',
-    rating: 4.9,
-    reviews: 312,
-    fee: 500,
-    queueCount: 3,
-    available: true,
-    experience: '12 yrs',
-    qualification: 'MD, DM Cardiology',
-  },
-  {
-    id: '2',
-    name: 'Dr. Rahul Mehta',
-    specialty: 'General Physician',
-    rating: 4.7,
-    reviews: 580,
-    fee: 200,
-    queueCount: 7,
-    available: true,
-    experience: '8 yrs',
-    qualification: 'MBBS, MD',
-  },
-  {
-    id: '3',
-    name: 'Dr. Anita Verma',
-    specialty: 'Dermatologist',
-    rating: 4.8,
-    reviews: 204,
-    fee: 400,
-    queueCount: 0,
-    available: false,
-    experience: '10 yrs',
-    qualification: 'MBBS, DVD',
-  },
-];
+const MOCK_DOCTORS: never[] = []; // removed — using Firestore via useDoctorsRealtime
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -99,7 +60,9 @@ function QueueBadge({ count, available }: { count: number; available: boolean })
   );
 }
 
-function DoctorCard({ doctor, onPress }: { doctor: typeof MOCK_DOCTORS[0]; onPress: () => void }) {
+import { Doctor } from '../../firebase/firestore';
+
+function DoctorCard({ doctor, onPress }: { doctor: Doctor; onPress: () => void }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -201,7 +164,11 @@ function DoctorCard({ doctor, onPress }: { doctor: typeof MOCK_DOCTORS[0]; onPre
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const [selectedSpecialty, setSelectedSpecialty] = useState('1');
+  const [selectedSpecialty, setSelectedSpecialty] = useState('');
+
+  const { doctors, loading: doctorsLoading } = useDoctorsRealtime(
+    selectedSpecialty ? { specialtyKey: selectedSpecialty } : undefined
+  );
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -418,7 +385,7 @@ export default function HomeScreen() {
               return (
                 <TouchableOpacity
                   key={spec.id}
-                  onPress={() => setSelectedSpecialty(spec.id)}
+                  onPress={() => setSelectedSpecialty(selectedSpecialty === spec.id ? '' : spec.id)}
                   style={{
                     alignItems: 'center',
                     paddingHorizontal: 14,
@@ -465,13 +432,22 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {MOCK_DOCTORS.map((doctor) => (
-            <DoctorCard
-              key={doctor.id}
-              doctor={doctor}
-              onPress={() => router.push(`/(patient)/doctor/${doctor.id}` as any)}
-            />
-          ))}
+          {doctors.length === 0 && !doctorsLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+              <Text style={{ fontSize: 32, marginBottom: 8 }}>🏥</Text>
+              <Text style={{ fontSize: 15, color: Colors.textSub, textAlign: 'center' }}>
+                No doctors found.{`\n`}Doctors will appear here once added.
+              </Text>
+            </View>
+          ) : (
+            doctors.map((doctor) => (
+              <DoctorCard
+                key={doctor.id}
+                doctor={doctor}
+                onPress={() => router.push(`/(patient)/doctor/${doctor.id}` as any)}
+              />
+            ))
+          )}
         </View>
 
       </ScrollView>

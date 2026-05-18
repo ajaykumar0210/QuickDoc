@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { sendOTP } from '../../firebase/auth';
 import { Colors } from '../../constants/colors';
 
@@ -32,10 +31,10 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const fullPhone = `+91${phone}`;
-      const confirmation = await sendOTP(fullPhone);
+      await sendOTP(fullPhone); // stores confirmation in module memory
       router.push({
         pathname: '/(auth)/otp',
-        params: { phone: fullPhone, confirmationToken: JSON.stringify(confirmation) },
+        params: { phone: fullPhone },
       });
     } catch (error: any) {
       Alert.alert('Error', error?.message ?? 'Failed to send OTP. Please try again.');

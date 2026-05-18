@@ -1,27 +1,4 @@
-import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Colors } from '../../constants/colors';
-
-const FILTERS = ['All', 'Available Now', 'Highest Rated', 'Lowest Fee', 'Nearest'];
-
-const ALL_DOCTORS = [
-  { id: '1', name: 'Dr. Priya Sharma', specialty: 'Cardiologist', rating: 4.9, reviews: 312, fee: 500, queueCount: 3, available: true, experience: '12 yrs', distance: '0.8 km' },
-  { id: '2', name: 'Dr. Rahul Mehta', specialty: 'General Physician', rating: 4.7, reviews: 580, fee: 200, queueCount: 7, available: true, experience: '8 yrs', distance: '1.2 km' },
-  { id: '3', name: 'Dr. Anita Verma', specialty: 'Dermatologist', rating: 4.8, reviews: 204, fee: 400, queueCount: 0, available: false, experience: '10 yrs', distance: '2.1 km' },
-  { id: '4', name: 'Dr. Suresh Patel', specialty: 'Orthopedic', rating: 4.6, reviews: 145, fee: 600, queueCount: 5, available: true, experience: '15 yrs', distance: '1.8 km' },
-  { id: '5', name: 'Dr. Kavita Nair', specialty: 'Gynecologist', rating: 4.9, reviews: 380, fee: 450, queueCount: 2, available: true, experience: '18 yrs', distance: '3.0 km' },
-  { id: '6', name: 'Dr. Amit Kumar', specialty: 'Dentist', rating: 4.5, reviews: 92, fee: 300, queueCount: 0, available: false, experience: '6 yrs', distance: '0.5 km' },
-];
+import { useState, useMemo } from 'react';\nimport {\n  View,\n  Text,\n  TextInput,\n  FlatList,\n  TouchableOpacity,\n  ScrollView,\n  ActivityIndicator,\n} from 'react-native';\nimport { SafeAreaView } from 'react-native-safe-area-context';\nimport { useRouter } from 'expo-router';\nimport { Colors } from '../../constants/colors';\nimport { useDoctorsRealtime } from '../../hooks/useSearch';\n\nconst FILTERS = ['All', 'Available Now', 'Highest Rated', 'Lowest Fee', 'Nearest'];
 
 function QueueChip({ count, available }: { count: number; available: boolean }) {
   if (!available) return (
@@ -49,21 +26,25 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
-  const filtered = ALL_DOCTORS.filter((d) => {
-    const matchesQuery =
-      query.length === 0 ||
-      d.name.toLowerCase().includes(query.toLowerCase()) ||
-      d.specialty.toLowerCase().includes(query.toLowerCase());
+  const { doctors, loading } = useDoctorsRealtime();
 
-    const matchesFilter =
-      activeFilter === 'All' ||
-      (activeFilter === 'Available Now' && d.available) ||
-      (activeFilter === 'Highest Rated' && d.rating >= 4.8) ||
-      (activeFilter === 'Lowest Fee' && d.fee <= 300) ||
-      activeFilter === 'Nearest';
+  const filtered = useMemo(() => {
+    return doctors.filter((d) => {
+      const matchesQuery =
+        query.length === 0 ||
+        d.name.toLowerCase().includes(query.toLowerCase()) ||
+        d.specialty.toLowerCase().includes(query.toLowerCase());
 
-    return matchesQuery && matchesFilter;
-  });
+      const matchesFilter =
+        activeFilter === 'All' ||
+        (activeFilter === 'Available Now' && d.available) ||
+        (activeFilter === 'Highest Rated' && d.rating >= 4.8) ||
+        (activeFilter === 'Lowest Fee' && d.fee <= 300) ||
+        activeFilter === 'Nearest';
+
+      return matchesQuery && matchesFilter;
+    });
+  }, [doctors, query, activeFilter]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -140,13 +121,18 @@ export default function SearchScreen() {
       </ScrollView>
 
       {/* Results count */}
-      <Text style={{ fontSize: 13, color: Colors.textMuted, paddingHorizontal: 20, marginBottom: 8 }}>
-        {filtered.length} doctors found
-      </Text>
-
-      {/* Doctor list */}
-      <FlatList
-        data={filtered}
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : (
+        <>
+          <Text style={{ fontSize: 13, color: Colors.textMuted, paddingHorizontal: 20, marginBottom: 8 }}>
+            {filtered.length} doctors found
+          </Text>
+          {/* Doctor list */}
+          <FlatList
+            data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
@@ -224,7 +210,7 @@ export default function SearchScreen() {
                 }}
               >
                 <Text style={{ fontSize: 13, fontWeight: '700', color: doctor.available ? '#fff' : Colors.textMuted }}>
-                  {doctor.available ? 'Book ₹12' : 'Notify Me'}
+                  {doctor.available ? `Book ₹${doctor.fee}` : 'Notify Me'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -242,6 +228,8 @@ export default function SearchScreen() {
           </View>
         }
       />
+        </>
+      )}
     </SafeAreaView>
   );
 }

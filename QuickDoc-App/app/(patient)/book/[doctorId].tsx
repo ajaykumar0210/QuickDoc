@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '../../../constants/colors';
+import { getDoctor, createBooking, Doctor } from '../../../firebase/firestore';
+import { addToQueue } from '../../../firebase/realtimeQueue';
+import { useAuthStore } from '../../../store/authStore';
 
 const TIME_SLOTS = [
   { id: '1', time: '10:00 AM', available: true },
@@ -42,23 +45,59 @@ const DAYS = [
 export default function BookingScreen() {
   const router = useRouter();
   const { doctorId } = useLocalSearchParams<{ doctorId: string }>();
+  const { user } = useAuthStore();
   const [selectedDay, setSelectedDay] = useState('0');
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [visitType, setVisitType] = useState('new');
+  const [visitType, setVisitType] = useState<'new' | 'follow'>('new');
   const [loading, setLoading] = useState(false);
+  const [doctor, setDoctor] = useState<Doctor | null>(null);
+
+  useEffect(() => {
+    if (doctorId) {
+      getDoctor(doctorId).then(setDoctor);
+    }
+  }, [doctorId]);
+
+  function getSelectedDate(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + Number(selectedDay));
+    return d.toISOString().split('T')[0];
+  }
 
   async function handleConfirmBooking() {
     if (!selectedSlot) {
       Alert.alert('Select Time', 'Please select an appointment time slot.');
       return;
     }
+    if (!user) return;
+
     setLoading(true);
-    // Simulate booking API call
-    setTimeout(() => {
+    try {
+      const slotData = TIME_SLOTS.find((s) => s.id === selectedSlot);
+      const bookingDate = getSelectedDate();
+
+      const bookingId = await createBooking({
+        userId: user.uid,
+        doctorId: doctorId ?? '',
+        doctorName: doctor?.name ?? 'Doctor',
+        doctorSpecialty: doctor?.specialty ?? '',
+        doctorFee: doctor?.fee ?? 0,
+        date: bookingDate,
+        timeSlot: slotData?.time ?? '',
+        visitType,
+        status: 'confirmed',
+        queuePosition: 0,
+      });
+
+      const position = await addToQueue(doctorId ?? '', bookingDate, bookingId, user.uid);
+
+      // Update booking with real queue position
+      router.replace(`/(patient)/queue/${bookingId}` as any);
+    } catch (err: any) {
+      Alert.alert('Booking Failed', err?.message ?? 'Could not complete booking. Try again.');
+    } finally {
       setLoading(false);
-      const appointmentId = `apt_${Date.now()}`;
-      router.replace(`/(patient)/queue/${appointmentId}` as any);
-    }, 1500);
+    }
   }
 
   const selectedSlotData = TIME_SLOTS.find((s) => s.id === selectedSlot);
@@ -112,9 +151,15 @@ export default function BookingScreen() {
             <Text style={{ fontSize: 26 }}>👩‍⚕️</Text>
           </View>
           <View>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.textMain }}>Dr. Priya Sharma</Text>
-            <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '500' }}>Cardiologist</Text>
-            <Text style={{ fontSize: 12, color: Colors.textSub, marginTop: 2 }}>📍 HeartCare Clinic, Noida</Text>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.textMain }}>
+              {doctor?.name ?? 'Loading...'}
+            </Text>
+            <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '500' }}>
+              {doctor?.specialty ?? ''}
+            </Text>
+            <Text style={{ fontSize: 12, color: Colors.textSub, marginTop: 2 }}>
+              📍 {doctor?.clinicName ?? ''}
+            </Text>
           </View>
         </View>
 
@@ -254,7 +299,7 @@ export default function BookingScreen() {
             💳 Booking Summary
           </Text>
           {[
-            { label: 'Consultation Fee', value: '₹500' },
+            { label: 'Consultation Fee', value: `₹${doctor?.fee ?? 0}` },
             { label: 'Platform Fee (QuickDoc)', value: '₹10' },
             { label: 'Convenience Fee', value: '₹2' },
           ].map((row, idx) => (

@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import { verifyOTP, sendOTP } from '../../firebase/auth';
+import { verifyOTP, sendOTP, getPendingConfirmation } from '../../firebase/auth';
 import { useAuthStore } from '../../store/authStore';
 import { Colors } from '../../constants/colors';
 
@@ -20,26 +19,18 @@ const OTP_LENGTH = 6;
 
 export default function OTPScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ phone: string; confirmationToken: string }>();
+  const params = useLocalSearchParams<{ phone: string }>();
   const { setUser } = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
-  const [confirmation, setConfirmation] = useState<FirebaseAuthTypes.ConfirmationResult | null>(
-    null
+  // Initialized from module memory — set by sendOTP() in login screen
+  const [confirmation, setConfirmation] = useState<{ confirm: (code: string) => Promise<any> } | null>(
+    () => getPendingConfirmation()
   );
 
   const inputRefs = useRef<(TextInput | null)[]>(Array(OTP_LENGTH).fill(null));
-
-  // Parse the confirmation result passed via params
-  useEffect(() => {
-    if (params.confirmationToken) {
-      try {
-        setConfirmation(JSON.parse(params.confirmationToken));
-      } catch {}
-    }
-  }, []);
 
   // Resend countdown
   useEffect(() => {
@@ -101,7 +92,7 @@ export default function OTPScreen() {
   async function handleResend() {
     if (resendTimer > 0 || !params.phone) return;
     try {
-      const newConfirmation = await sendOTP(params.phone);
+      const newConfirmation = await sendOTP(params.phone); // also updates module memory
       setConfirmation(newConfirmation);
       setOtp(Array(OTP_LENGTH).fill(''));
       setResendTimer(30);

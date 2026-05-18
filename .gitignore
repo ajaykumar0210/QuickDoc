@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Env files — never commit secrets
+.env
+.env.local
+.env*.local
+
+# Build outputs
+dist/
+build/
+.expo/
+web-build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Firebase secrets
+google-services.json
+GoogleService-Info.plist
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Editor
+.vscode/
+*.tsbuildinfo

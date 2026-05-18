@@ -7,6 +7,7 @@ export interface QDUser {
   phoneNumber: string | null;
   displayName: string | null;
   photoURL: string | null;
+  profileComplete: boolean;
 }
 
 interface AuthState {
